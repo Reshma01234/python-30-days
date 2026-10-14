@@ -1,0 +1,79 @@
+DAY 6 DEBUGGING NOTES - Exceptions & Debugging
+Programs tested: utility_calculator.py, task_manager.py
+
+
+1. BUG - Utility Calculator shows "inf" as a normal result
+
+Input/steps:
+  Choose 3 (Multiply), first number 1e308, second number 1e308.
+  Same problem with 1e308 + 1e308 (Add) and 1e308 / 1e-308 (Divide).
+
+Before the fix:
+  The program printed "Result: inf" as if it were a valid answer.
+  No exception was raised and no traceback appeared.
+
+Cause:
+  Python float arithmetic does not raise OverflowError for +, - , * or /.
+  When a result is too large for a float, Python quietly returns inf.
+  The existing "except OverflowError" handler never ran because nothing
+  raised that exception.
+
+Change made:
+  Added validate_result(result) in utility_calculator.py. It uses
+  math.isfinite() and raises OverflowError when the result is inf or nan.
+  main() now prints validate_result(result), inside the existing try block,
+  so the existing "except OverflowError" handler shows a readable message.
+  The arithmetic functions were not changed.
+
+Retest result:
+  1e308 * 1e308  -> "Error: the result is too large to calculate. Try smaller numbers."
+  1e308 + 1e308  -> same error message
+  1e308 / 1e-308 -> same error message
+  The menu continued to work after each error.
+  Normal results still work: 6 + 3 = 9.0, 6 / 3 = 2.0, -2.5 + 1.25 = -1.25.
+
+
+2. EDGE CASE - Task Manager blank menu choice and blank task description
+   (deliberate test; no bug found)
+
+Input/steps:
+  At the menu press Enter, then type 7.
+  Choose 1 (Add Task) and enter an empty line, then a line of spaces,
+  then "Write code". Then choose 2 (View Tasks).
+
+What happened:
+  Blank choice -> "Choice cannot be empty. Please enter 1, 2, or 3."
+  7            -> "Invalid choice. Please enter 1, 2, or 3."
+  Blank and spaces-only descriptions were rejected and the prompt repeated.
+  View Tasks showed only "1. Write code".
+
+Cause / explanation:
+  Both input functions already use .strip() and check "if not value", so
+  empty and whitespace-only input is rejected before anything is stored.
+
+Change made:
+  None needed.
+
+Retest result:
+  Passed. Add, view, exact-duplicate rejection and exit all still work.
+
+
+3. EDGE CASE - Task Manager duplicate that differs only by letter case
+   (observed; not changed)
+
+Input/steps:
+  Add "Buy milk", then add "buy milk".
+
+What happened:
+  Both tasks were stored. The duplicate check uses exact text matching,
+  so "Buy milk" and "buy milk" count as different tasks.
+
+Cause:
+  "task_description in tasks" compares strings exactly, including case.
+
+Change made:
+  None. The Day 6 brief says to preserve existing behavior. Exact
+  duplicates are still rejected as before.
+
+Retest result:
+  Exact duplicate "Buy milk" twice -> "This task already exists."
